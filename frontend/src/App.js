@@ -1,179 +1,186 @@
 // src/App.js
-
 import React, { useState, useEffect } from "react";
-import "bootstrap/dist/css/bootstrap.min.css"; // import bootstrap
-import { Button, ListGroup, Form } from "react-bootstrap";
+import axios from "axios";
 import moment from "moment";
+import "bootstrap/dist/css/bootstrap.min.css"; // ייבוא של Bootstrap
 
 function App() {
-  // State management
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState("");
-  const [newTime, setNewTime] = useState("");
-  const [editing, setEditing] = useState(null);
-  const [editTask, setEditTask] = useState("");
-  const [editTime, setEditTime] = useState("");
+  const [deadline, setDeadline] = useState("");
+  const [isEditingTitle, setIsEditingTitle] = useState(null); // מצב עריכת שם משימה
+  const [isEditingDeadline, setIsEditingDeadline] = useState(null); // מצב עריכת זמן משימה
+  const [editedTaskName, setEditedTaskName] = useState("");
+  const [editedTaskDeadline, setEditedTaskDeadline] = useState("");
 
-  // Fetch tasks from API
+  // Fetch tasks from the backend server
   useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        const response = await fetch("/api/tasks");
-        const data = await response.json();
-        setTasks(data); // Assuming the API returns an array of tasks
-      } catch (error) {
-        console.error("Error fetching tasks:", error);
-      }
-    };
+    axios
+      .get("http://localhost:5000/api/tasks")
+      .then((response) => setTasks(response.data))
+      .catch((error) => console.error("Error fetching tasks:", error));
+  }, []);
 
-    fetchTasks();
-  }, []); // Empty dependency array means this effect runs once on component mount
-
-  // Handle task submission
-  const handleAddTask = () => {
-    const newTaskObj = {
-      name: newTask,
-      time: newTime,
-      completed: false,
-    };
-    setTasks([...tasks, newTaskObj]);
-    setNewTask("");
-    setNewTime("");
+  // Add a new task
+  const addTask = () => {
+    const task = { title: newTask, deadline };
+    axios
+      .post("http://localhost:5000/api/tasks", task)
+      .then((response) => setTasks([...tasks, response.data]))
+      .catch((error) => console.error("Error adding task:", error));
   };
 
-  // Handle edit task
-  const handleEditTask = (task) => {
-    setEditing(task);
-    setEditTask(task.name);
-    setEditTime(task.time);
+  // Mark task as completed
+  const completeTask = (taskId) => {
+    setTasks(
+      tasks.map((task) =>
+        task._id === taskId ? { ...task, completed: true } : task
+      )
+    );
   };
 
-  // Handle task update
-  const handleUpdateTask = () => {
+  // Mark task as cancelled
+  const cancelTask = (taskId) => {
+    setTasks(tasks.filter((task) => task._id !== taskId));
+  };
+
+  // Update task title
+  const updateTaskTitle = (taskId) => {
     const updatedTasks = tasks.map((task) =>
-      task === editing ? { ...task, name: editTask, time: editTime } : task
+      task._id === taskId ? { ...task, title: editedTaskName } : task
     );
     setTasks(updatedTasks);
-    setEditing(null);
+    setIsEditingTitle(null); // סיום עריכת שם המשימה
   };
 
-  // Handle task deletion
-  const handleDeleteTask = (task) => {
-    setTasks(tasks.filter((t) => t !== task));
-  };
-
-  // Handle task completion
-  const handleCompleteTask = (task) => {
-    const updatedTasks = tasks.map((t) =>
-      t === task ? { ...t, completed: !t.completed } : t
+  // Update task deadline
+  const updateTaskDeadline = (taskId) => {
+    const updatedTasks = tasks.map((task) =>
+      task._id === taskId ? { ...task, deadline: editedTaskDeadline } : task
     );
     setTasks(updatedTasks);
+    setIsEditingDeadline(null); // סיום עריכת זמן המשימה
   };
 
   return (
-    <div className="container mt-5">
-      <h1>To-Do List</h1>
+    <div className="container mt-4">
+      <h1 className="text-center mb-4">To-Do List</h1>
 
-      {/* New Task Form */}
-      <div className="mb-4">
-        <Form>
-          <Form.Group>
-            <Form.Label>Task Name</Form.Label>
-            <Form.Control
-              type="text"
-              value={newTask}
-              onChange={(e) => setNewTask(e.target.value)}
-            />
-          </Form.Group>
-          <Form.Group>
-            <Form.Label>Time</Form.Label>
-            <Form.Control
-              type="text"
-              value={newTime}
-              onChange={(e) => setNewTime(e.target.value)}
-            />
-          </Form.Group>
-          <Button variant="primary" onClick={handleAddTask}>
-            Add Task
-          </Button>
-        </Form>
+      <div className="row mb-4">
+        <div className="col-md-6">
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Task name"
+            value={newTask}
+            onChange={(e) => setNewTask(e.target.value)}
+          />
+        </div>
+        <div className="col-md-6">
+          <input
+            type="datetime-local"
+            className="form-control"
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+          />
+        </div>
       </div>
 
-      {/* Task List */}
-      <ListGroup>
-        {tasks.map((task, index) => (
-          <ListGroup.Item
-            key={index}
-            className={task.completed ? "bg-success text-white" : ""}
+      <button className="btn btn-primary w-100" onClick={addTask}>
+        Add Task
+      </button>
+
+      <ul className="list-group mt-4">
+        {tasks.map((task) => (
+          <li
+            key={task._id}
+            className={`list-group-item d-flex justify-content-between align-items-center ${
+              task.completed ? "bg-success text-white" : ""
+            }`}
           >
-            <div className="d-flex justify-content-between">
-              <div>
-                <h5
+            <div>
+              {/* אם אנחנו במצב עריכה של שם המשימה */}
+              {isEditingTitle === task._id ? (
+                <div>
+                  <input
+                    type="text"
+                    className="form-control"
+                    defaultValue={task.title}
+                    onChange={(e) => setEditedTaskName(e.target.value)}
+                  />
+                  <button
+                    className="btn btn-primary btn-sm mt-2"
+                    onClick={() => updateTaskTitle(task._id)}
+                  >
+                    Save
+                  </button>
+                </div>
+              ) : (
+                <span
+                  onClick={() => {
+                    setIsEditingTitle(task._id);
+                    setEditedTaskName(task.title);
+                  }}
                   style={{ cursor: "pointer" }}
-                  onClick={() => handleEditTask(task)}
                 >
-                  {task.name}
-                </h5>
-                <p>{moment(task.time).format("YYYY-MM-DD HH:mm:ss")}</p>
-                {task.completed && (
-                  <span className="text-success">Completed</span>
-                )}
-              </div>
+                  {task.title}
+                </span>
+              )}
 
-              <div>
-                <Button
-                  variant="success"
-                  onClick={() => handleCompleteTask(task)}
-                >
-                  ✅
-                </Button>
-                <Button
-                  variant="danger"
-                  onClick={() => handleDeleteTask(task)}
-                  className="ml-2"
-                >
-                  ❌
-                </Button>
-              </div>
+              <br />
+
+              {/* הזמן שנותר */}
+              <small>Time Left: {moment(task.deadline).fromNow()}</small>
             </div>
-          </ListGroup.Item>
+            <div>
+              {/* אם אנחנו במצב עריכה של זמן המשימה */}
+              {isEditingDeadline === task._id ? (
+                <div>
+                  <input
+                    type="datetime-local"
+                    className="form-control"
+                    defaultValue={moment(task.deadline).format(
+                      "YYYY-MM-DDTHH:mm"
+                    )}
+                    onChange={(e) => setEditedTaskDeadline(e.target.value)}
+                  />
+                  <button
+                    className="btn btn-primary btn-sm mt-2"
+                    onClick={() => updateTaskDeadline(task._id)}
+                  >
+                    Save
+                  </button>
+                </div>
+              ) : (
+                <span
+                  onClick={() => {
+                    setIsEditingDeadline(task._id);
+                    setEditedTaskDeadline(task.deadline);
+                  }}
+                  style={{ cursor: "pointer" }}
+                >
+                  {moment(task.deadline).format("YYYY-MM-DD HH:mm:ss")}
+                </span>
+              )}
+            </div>
+            <div>
+              <button
+                className="btn btn-success btn-sm mx-2"
+                onClick={() => completeTask(task._id)}
+                disabled={task.completed}
+              >
+                <i className="fas fa-check"></i> {/* אייקון של וי */}
+              </button>
+              <button
+                className="btn btn-danger btn-sm"
+                onClick={() => cancelTask(task._id)}
+              >
+                <i className="fas fa-times"></i> {/* אייקון של איקס */}
+              </button>
+            </div>
+          </li>
         ))}
-      </ListGroup>
-
-      {/* Edit Task Modal or Inline Editing */}
-      {editing && (
-        <div className="mt-4">
-          <h3>Edit Task</h3>
-          <Form>
-            <Form.Group>
-              <Form.Label>Task Name</Form.Label>
-              <Form.Control
-                type="text"
-                value={editTask}
-                onChange={(e) => setEditTask(e.target.value)}
-              />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label>Time</Form.Label>
-              <Form.Control
-                type="text"
-                value={editTime}
-                onChange={(e) => setEditTime(e.target.value)}
-              />
-            </Form.Group>
-            <Button variant="primary" onClick={handleUpdateTask}>
-              Update Task
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => setEditing(null)}
-              className="ml-2"
-            >
-              Cancel
-            </Button>
-          </Form>
-        </div>
-      )}
+      </ul>
     </div>
   );
 }
