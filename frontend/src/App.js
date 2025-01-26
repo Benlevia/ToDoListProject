@@ -13,10 +13,10 @@ function App() {
   const [editedTaskName, setEditedTaskName] = useState("");
   const [editedTaskDeadline, setEditedTaskDeadline] = useState("");
 
-  // Fetch tasks from the backend server
+  // Fetch tasks from the backend server (עדכון לכתובת ה-API ב-Vercel)
   useEffect(() => {
     axios
-      .get("http://localhost:5000/api/tasks")
+      .get("https://to-do-list-project-five-vert.vercel.app/api/tasks") // עדכון ל-API ב-Vercel
       .then((response) => setTasks(response.data))
       .catch((error) => console.error("Error fetching tasks:", error));
   }, []);
@@ -25,7 +25,7 @@ function App() {
   const addTask = () => {
     const task = { title: newTask, deadline };
     axios
-      .post("http://localhost:5000/api/tasks", task)
+      .post("https://to-do-list-project-five-vert.vercel.app/api/tasks", task) // עדכון ל-API ב-Vercel
       .then((response) => setTasks([...tasks, response.data]))
       .catch((error) => console.error("Error adding task:", error));
   };
